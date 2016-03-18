@@ -51,6 +51,19 @@
       <source-file src="src/android/WiFis.java" target-dir="src/p4th/wifis" />
     </platform>
 
+    <!-- browser -->
+    <platform name="browser">
+        <config-file target="config.xml" parent="/*">
+            <feature name="WiFis">
+                <param name="browser-package" value="WiFis" />
+            </feature>
+        </config-file>
+
+        <js-module src="src/browser/wifis.js" name="WiFis">
+            <runs />
+        </js-module>
+    </platform>
+
     <dependency
 	id="es6-promise-plugin"
 	url="https://github.com/vstirbu/PromisesPlugin.git">
