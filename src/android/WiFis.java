@@ -62,7 +62,7 @@ public class WiFis extends CordovaPlugin {
 		Log.i(this.wifisInstance.TAG, new Integer(this.wifisInstance.getPendingScans().size()).toString());
 		while (this.wifisInstance.getPendingScans().size() > 0) {
 		    pendingScan = this.wifisInstance.getPendingScans().remove(0);
-		    res = this.wifisInstance.asJSON(scanResults, pendingScan.pendingTime);
+		    res = this.wifisInstance.normalizeAsJSON(scanResults, pendingScan.pendingTime);
 		    pendingScan.callbackContext.success(res);
 		}
 	    } catch (Exception e) {
@@ -73,6 +73,9 @@ public class WiFis extends CordovaPlugin {
     
     public static final int REQUEST_CODE = 666;
     public static final String TAG = "WiFis";
+    public final static int MIN_RSSI = -100;
+    public final static int MAX_RSSI = 0;
+
     
     protected WifiManager wifiManager = null;
     protected ArrayList<PendingScan> pendingScans = new ArrayList<PendingScan>();
@@ -167,23 +170,28 @@ public class WiFis extends CordovaPlugin {
     }    
     
 
-    public JSONObject asJSON(List<ScanResult> scanResults, long pendingTime) throws JSONException {
+    public JSONObject normalizeAsJSON(List<ScanResult> scanResults, long pendingTime) throws JSONException {
 	JSONObject res = new JSONObject();
 	JSONArray networks = new JSONArray();
 	for (int i = 0 ; i < scanResults.size() ; i++) {
-	    networks.put(this.asJSON(scanResults.get(i)));
+	    networks.put(this.normalizeAsJSON(scanResults.get(i)));
 	}
 	res.put("networks", networks);
 	res.put("pendingTime", (System.nanoTime() - pendingTime) / 1000);
 	return res;
     }
 
-    public JSONObject asJSON(ScanResult scanResult) throws JSONException {
+    public static float normalizeRSSI(int level) {
+	return (float)(level - WiFis.MIN_RSSI) / (float)Math.abs(WiFis.MAX_RSSI - WiFis.MIN_RSSI);
+    }
+
+    public JSONObject normalizeAsJSON(ScanResult scanResult) throws JSONException {
 	JSONObject res = new JSONObject();
 	res.put("SSID", scanResult.SSID);
 	res.put("RSSI", scanResult.level);
 	res.put("timestamp", scanResult.timestamp);
 	res.put("summary", scanResult.toString());
+	res.put("strength", WiFis.normalizeRSSI(scanResult.level));
 	return res;
     }
 

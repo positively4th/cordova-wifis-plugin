@@ -38,6 +38,12 @@ function getNrm(p, q) {
     return Math.sqrt(res);
 }
 
+function normalizeRSSI(level) {
+    var MIN_RSSI = -100;
+    var MAX_RSSI = 0;
+    return (level - MIN_RSSI) / Math.abs(MAX_RSSI - MIN_RSSI);
+}
+
 function scan(pendingTime) {
     var i;
     var q;
@@ -49,10 +55,12 @@ function scan(pendingTime) {
     var p = [2 * Math.random() - 1, 2 * Math.random() - 1, 2 * Math.random() - 1];
     for (i = 0 ; i < wifis.length ; i++) {
 	q = wifis[i].split(',');
+	var rssi = - 100 * getNrm(p,q) / Math.sqrt(4+4+4);
 	res.networks.push({
 	    SSID: wifis[i],
-	    RSSI: - 100 * getNrm(p,q) / Math.sqrt(4+4+4),
+	    RSSI: rssi,
 	    timestamp: Date.now(),
+	    strength: normalizeRSSI(rssi)
 	});
 	res.networks.summary = p.join(',');
     }
