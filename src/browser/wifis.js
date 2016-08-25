@@ -54,15 +54,17 @@ function scan(pendingTime) {
 
     var p = [2 * Math.random() - 1, 2 * Math.random() - 1, 2 * Math.random() - 1];
     for (i = 0 ; i < wifis.length ; i++) {
-	q = wifis[i].split(',');
-	var rssi = - 100 * getNrm(p,q) / Math.sqrt(4+4+4);
-	res.networks.push({
-	    SSID: wifis[i],
-	    RSSI: rssi,
-	    timestamp: Date.now(),
-	    strength: normalizeRSSI(rssi)
-	});
-	res.networks.summary = p.join(',');
+	if (Math.random() > 0.25) {
+	    q = wifis[i].split(',');
+	    var rssi = - 100 * getNrm(p,q) / Math.sqrt(4+4+4);
+	    res.networks.push({
+		SSID: wifis[i],
+		RSSI: rssi,
+		timestamp: Date.now(),
+		strength: normalizeRSSI(rssi)
+	    });
+	    res.networks.summary = p.join(',');
+	}
     }
     return res;
 }
