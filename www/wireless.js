@@ -35,8 +35,21 @@ var  exec = require('cordova/exec');
 //channel.waitForInitialization('onCordovaInfoReady');
 
 function Wireless() {
-    this.started = false; 
 }
+
+Wireless.prototype.scan = function(onSuccess, onError) {
+
+
+    var _onSuccess = function (scanResult) {
+	onSuccess(scanResult);
+    }.bind(this);
+    
+    var _onError = function (err) {
+	onError(err);
+    }.bind(this);
+    
+    exec(_onSuccess, _onError, "Wireless", "scan", []);
+};
 
 Wireless.prototype.start = function(onSuccess, onError, scanInterval) {
 
@@ -46,15 +59,24 @@ Wireless.prototype.start = function(onSuccess, onError, scanInterval) {
     }.bind(this);
     
     var _onError = function (err) {
-	console.log('Error: Wireless: scan: ' + err);
 	onError(err);
     }.bind(this);
     
-    if (!this.started) {
-	exec(_onSuccess, _onError, "Wireless", "start", [scanInterval]);
-    } else {
-	throw new Error('Wireless: Already started.');
-    }
+    exec(_onSuccess, _onError, "Wireless", "start", [scanInterval]);
+};
+
+Wireless.prototype.stop = function(onSuccess, onError, scanInterval) {
+    
+
+    var _onSuccess = function (scanResult) {
+	onSuccess(scanResult);
+    }.bind(this);
+    
+    var _onError = function (err) {
+	onError(err);
+    }.bind(this);
+    
+    exec(_onSuccess, _onError, "Wireless", "stop", []);
 };
 
 module.exports = new Wireless();

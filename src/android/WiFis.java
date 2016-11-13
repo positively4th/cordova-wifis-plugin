@@ -1,7 +1,7 @@
 package com.p4th.wireless;
 
 import com.p4th.wireless.Permissioner;
-import com.p4th.wireless.CallbackJSON;
+import com.p4th.wireless.ResultCB;
 
 import java.util.TimeZone;
 
@@ -47,22 +47,19 @@ public class WiFis implements Permissioner.PermissionHandler {
 		Log.i(this.TAG, "Received scan results");
 		//		Log.i(this.wifisInstance.TAG, new Integer(scanResults.size()).toString());
 		Log.i(this.TAG, scanResults.toString());
-		JSONObject res;
-		res = this.normalizeAsJSON(scanResults);
-		WiFis.this.cbJSON.cbJSON(res);
+		JSONArray res = this.normalizeAsJSON(scanResults);
+		WiFis.this.resultCB.handleResult(new Result(this.getType(), res));
 	    } catch (Exception e) {
 		Log.e(this.TAG, e.getMessage());
 	    }
 	}
 	
-	public JSONObject normalizeAsJSON(List<ScanResult> scanResults) throws JSONException {
-	    JSONObject res = new JSONObject();
+	public JSONArray normalizeAsJSON(List<ScanResult> scanResults) throws JSONException {
 	    JSONArray networks = new JSONArray();
 	    for (int i = 0 ; i < scanResults.size() ; i++) {
 		networks.put(this.normalizeAsJSON(scanResults.get(i)));
 	    }
-	    res.put("networks", networks);
-	    return res;
+	    return networks;
 	}
 	
 	public float normalizeRSSI(int level) {
@@ -74,12 +71,17 @@ public class WiFis implements Permissioner.PermissionHandler {
 	    res.put("id", scanResult.BSSID);
 	    res.put("name", scanResult.SSID);
 	    res.put("strength", this.normalizeRSSI(scanResult.level));
+	    res.put("type", this.getType());
 	    res.put("RSSI", scanResult.level);
 	    res.put("SSID", scanResult.SSID);
 	    res.put("BSSID", scanResult.BSSID);
 	    res.put("timestamp", scanResult.timestamp);
 	    res.put("summary", scanResult.toString());
 	    return res;
+	}
+
+	protected String getType () {
+	    return this.getClass().getEnclosingClass().getSimpleName();
 	}
 	
     }
@@ -95,15 +97,15 @@ public class WiFis implements Permissioner.PermissionHandler {
     protected WiFiReceiver wifiReceiver = null;
     protected Context ctx = null;
     protected Permissioner permissioner = null;
-    protected CallbackJSON cbJSON = null;
+    protected ResultCB resultCB = null;
     protected WifiManager wifiManager = null;
 
     /**
      * Constructor.
      */
-    public WiFis(Context ctx, CallbackJSON cbJSON) throws Exception {
+    public WiFis(Context ctx, ResultCB resultCB) throws Exception {
 	this.ctx = ctx;
-	this.cbJSON = cbJSON;
+	this.resultCB = resultCB;
 	this.permissioner = new Permissioner(this.ctx);
 
 	if (WiFis.scanIntentFilter == null) {

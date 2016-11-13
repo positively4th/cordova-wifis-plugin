@@ -1,7 +1,7 @@
 package com.p4th.wireless;
 
 import com.p4th.wireless.Permissioner;
-import com.p4th.wireless.CallbackJSON;
+import com.p4th.wireless.ResultCB;
 
 
 import java.util.TimeZone;
@@ -72,27 +72,20 @@ public class Bluetooths implements  Permissioner.PermissionHandler {
 	}
 	
 	protected void onScanFinished(Intent intent) {
-	    JSONObject res = this.normalizeAsJSON(this.intents);
-	    Bluetooths.this.cbJSON.cbJSON(res);
+	    JSONArray res = this.normalizeAsJSON(this.intents);
+	    Bluetooths.this.resultCB.handleResult(new Result(this.getType(), res));
        	}
-
-	protected JSONObject normalizeAsJSON(List<Intent> intents)  {
-	    try {
-		JSONObject res = new JSONObject();
-		JSONArray devices = new JSONArray();
-		for (int i = 0 ; i < intents.size() ; i++) {
-		    try {
-			devices.put(this.normalizeAsJSON(intents.get(i)));
-		    } catch (JSONException e) {
-			Log.e(BTReceiver.TAG, e.getMessage());
-		    }
+	
+	protected JSONArray normalizeAsJSON(List<Intent> intents)  {
+	    JSONArray devices = new JSONArray();
+	    for (int i = 0 ; i < intents.size() ; i++) {
+		try {
+		    devices.put(this.normalizeAsJSON(intents.get(i)));
+		} catch (JSONException e) {
+		    Log.e(BTReceiver.TAG, e.getMessage());
 		}
-		res.put("devices", devices);
-		return res;
-	    } catch (JSONException e) {
-		Log.e(BTReceiver.TAG, e.getMessage());
-		return new JSONObject();
 	    }
+	    return devices;
 	}
 	
 	public JSONObject normalizeAsJSON(Intent intent) throws JSONException {
@@ -108,6 +101,7 @@ public class Bluetooths implements  Permissioner.PermissionHandler {
 	    JSONObject res = new JSONObject();
 	    res.put("id", device.getAddress());
 	    res.put("name", device.getName());
+	    res.put("type", this.getType());
 	    res.put("strength", this.normalizeRSSI(rssi));
 	    res.put("RSSI", rssi);
 	    //	    res.put("timestamp", scanResult.timestamp);
@@ -119,7 +113,9 @@ public class Bluetooths implements  Permissioner.PermissionHandler {
 	    return (float)(level - BTReceiver.MIN_RSSI) / (float)Math.abs(BTReceiver.MAX_RSSI - BTReceiver.MIN_RSSI);
 	}
 	
-	
+	protected String getType () {
+	    return this.getClass().getEnclosingClass().getSimpleName();
+	}
 	
     }
 
@@ -132,16 +128,16 @@ public class Bluetooths implements  Permissioner.PermissionHandler {
     protected Activity activity = null;
     protected Context ctx = null;
     protected Permissioner permissioner = null;
-    protected CallbackJSON cbJSON = null;
+    protected ResultCB resultCB = null;
     protected BroadcastReceiver scanReceiver = null;
     /**
      * Constructor.
      */
-    public Bluetooths(Activity activity, Context ctx, CallbackJSON cbJSON) throws Exception  {
+    public Bluetooths(Activity activity, Context ctx, ResultCB resultCB) throws Exception  {
 	Log.i(this.TAG, "Bluetooths");
 	this.activity = activity;
 	this.ctx = ctx;
-	this.cbJSON = cbJSON;
+	this.resultCB = resultCB;
 	this.permissioner = new Permissioner(this.ctx);
 
 	if (Bluetooths.scanIntentFilter == null) {

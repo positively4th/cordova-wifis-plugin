@@ -2,7 +2,8 @@ package com.p4th.wireless;
 
 import com.p4th.wireless.WiFis;
 import com.p4th.wireless.Bluetooths;
-import com.p4th.wireless.CallbackJSON;
+import com.p4th.wireless.Result;
+import com.p4th.wireless.ResultCB;
 
 import java.util.TimeZone;
 
@@ -34,7 +35,8 @@ import android.os.Build.VERSION;
 import android.Manifest;
 import android.content.pm.PackageManager;
 
-public class Wireless extends CordovaPlugin implements CallbackJSON {
+public class Wireless extends CordovaPlugin implements ResultCB {
+
 
     protected class ScanTask extends TimerTask {
 	public void run() {
@@ -54,9 +56,12 @@ public class Wireless extends CordovaPlugin implements CallbackJSON {
     }
     
     public static final String TAG = "Wireless";
+
+    protected Result result = null; 
     protected WiFis wifis = null;
     protected Bluetooths bluetooths = null;
-    protected CallbackContext callbackContext;
+    protected CallbackContext startCbCtx = null;
+    protected CallbackContext scanCbCtx = null;
     protected Timer scanTimer = null;
     protected String cordovaCBId = null;
     /**
@@ -76,52 +81,108 @@ public class Wireless extends CordovaPlugin implements CallbackJSON {
         super.initialize(cordova, webView);
     }
 
-    public void cbJSON(JSONObject jsonData) {
-	Log.i(this.TAG, "cbJSON");
-	Log.i(this.TAG, jsonData.toString());
-	//	this.callbackContext.success(jsonData);
+    public void handleResult(Result res) {
+	Log.i(this.TAG, "handleResult");
+	Log.i(this.TAG, res.type);
+	Log.i(this.TAG, res.jsonData.toString());
 
+	String type = res.type;
+	JSONArray jsonData = res.jsonData;
+	
+	if (this.result == null || this.result.type == res.type) {
+	    Log.i(this.TAG, res.type + " aready reported");
+	    this.result = res;
+	    return;
+	}
+
+	Log.i(this.TAG, res.type + " not reported");
+	jsonData = this.concatJSONArray(this.result.jsonData, res.jsonData);
+	Log.i(this.TAG, "reporting: " + res.jsonData.toString());
+	
+	this.result = null;
+	this.callCbCtx(jsonData, this.startCbCtx, true);
+	if (this.startCbCtx != this.scanCbCtx) {
+	    this.callCbCtx(jsonData, this.scanCbCtx, false);
+	    this.scanCbCtx = null;
+	}
+    }
+
+    protected JSONArray concatJSONArray(JSONArray arr1, JSONArray arr2) {
+	try {
+	    JSONArray result = new JSONArray();
+	    for (int i = 0; i < arr1.length(); i++) {
+		result.put(arr1.get(i));
+	    }
+	    for (int i = 0; i < arr2.length(); i++) {
+		result.put(arr2.get(i));
+	    }
+	    return result;
+	} catch (JSONException e) {
+	    Log.e(Wireless.this.TAG, e.getMessage());
+	    return new JSONArray();
+	}
+    }
+
+    protected boolean callCbCtx(JSONArray jsonData, CallbackContext cbCtx, boolean keepCb) {
+	if (cbCtx == null) {
+	    return false;
+	}
 	PluginResult result = new PluginResult(PluginResult.Status.OK, jsonData); 
-	result.setKeepCallback(true); 
-	this.callbackContext.sendPluginResult(result);
+	result.setKeepCallback(keepCb); 
+	cbCtx.sendPluginResult(result);
+	return true;
+    }
+
+    protected boolean isTimerStarted() {
+	return this.scanTimer != null;
     }
 
     protected void startTimer (long period) {
-	if (this.scanTimer != null) {
-	    this.scanTimer.cancel();
-	    this.scanTimer =  null;
-	}
+	this.stopTimer();
 	if (period > 0) {
 	    this.scanTimer = new Timer();
 	    this.scanTimer.schedule(new ScanTask(), period, period);
 	}
     }
+    
+    protected void stopTimer () {
+	if (this.isTimerStarted()) {
+	    this.scanTimer.cancel();
+	    this.scanTimer =  null;
+	}
+    }
 
-    public boolean execute(String action, JSONArray args, final CallbackContext callbackContext) throws JSONException {
-	if ("start".equals(action)) {
-	    
+    protected boolean doStop(JSONArray args, final CallbackContext callbackContext) {
+	if (!this.isTimerStarted()) {
+	    callbackContext.error(this.TAG + ": " + "Not started.");
+	    return false;
+	}
 
-	    this.callbackContext = callbackContext;
+	this.stopTimer();
+	this.startCbCtx = null;
+	callbackContext.success();
+	return true;
+    }
 
-	    long period = 0;
-	    if (args.length() > 0) {
-		period = args.getLong(0);
-		Log.i(this.TAG, "periodSupplied");
-		Log.i(this.TAG, (new Integer((int)period).toString()));
-	    }
-	    this.startTimer(period);
-	    
-	    
-	    Log.i(this.TAG, "execute");
-	    try {
-		Wireless.this.wifis = new WiFis(Wireless.this.cordova.getActivity().getApplicationContext(), Wireless.this);
-		Wireless.this.bluetooths = new Bluetooths(Wireless.this.cordova.getActivity(), Wireless.this.cordova.getActivity().getApplicationContext(), Wireless.this);
-	    }
-	    catch (Exception e) {
-		Log.e(Wireless.this.TAG, e.getMessage());
-		callbackContext.success("");
-	    }
-	} else {
+    protected boolean doScan(JSONArray args, final CallbackContext callbackContext)  {
+	if (this.scanCbCtx != null) {
+	    callbackContext.error(this.TAG + ": " + "Scan already started.");
+	    return false;
+	}
+
+	this.scanCbCtx = callbackContext;
+	try {
+	    Wireless.this.wifis = new WiFis(Wireless.this.cordova.getActivity().getApplicationContext(), Wireless.this);
+	    Wireless.this.bluetooths = new Bluetooths(Wireless.this.cordova.getActivity(), Wireless.this.cordova.getActivity().getApplicationContext(), Wireless.this);
+	}
+	catch (JSONException e) {
+	    Log.e(Wireless.this.TAG, e.getMessage());
+	    callbackContext.error(e.getMessage());
+	    return false;
+	}
+	catch (Exception e) {
+	    Log.e(Wireless.this.TAG, e.getMessage());
+	    callbackContext.error(e.getMessage());
 	    return false;
 	}
 	this.cordovaCBId = callbackContext.getCallbackId();
@@ -129,7 +190,58 @@ public class Wireless extends CordovaPlugin implements CallbackJSON {
 	pluginResult.setKeepCallback(true); 
 	callbackContext.sendPluginResult(pluginResult);
 	return true;
+
+    }
+
+    protected boolean doStart(JSONArray args, final CallbackContext callbackContext)  {
+	if (this.isTimerStarted()) {
+	    callbackContext.error(this.TAG + ": " + "Already started.");
+	    return false;
+	}
+
+	try {
+	    this.startCbCtx = callbackContext;
+	    
+	    if (args.length() < 0) {
+		Log.e(this.TAG, "Interval missing.");
+		callbackContext.error(this.TAG + ": " + "Interval missing.");
+		return false;
+	    }
+	    
+	    long period = args.getLong(0);
+	    if (period <= 0) {
+		Log.e(this.TAG, "Interval invalid.");
+		callbackContext.error(this.TAG + ": " + "Interval invalid.");
+		return false;
+	    }
+	    this.startTimer(period);
+	}
+	catch (JSONException e) {
+	    Log.e(Wireless.this.TAG, e.getMessage());
+	    callbackContext.error(e.getMessage());
+	    return false;
+	}
+	
+	return this.doScan(args, callbackContext);
     }
     
+    public boolean execute(String action, JSONArray args, final CallbackContext callbackContext)  {
+	if ("start".equals(action)) {
+	    Log.i(this.TAG, "start");
+	    return this.doStart(args, callbackContext);
+	}
+	if ("stop".equals(action)) {
+	    Log.i(this.TAG, "stop");
+	    return this.doStop(args, callbackContext);
+	}
+	if ("scan".equals(action)) {
+	    Log.i(this.TAG, "scan");
+	    return this.doScan(args, callbackContext);
+	}
+	String error = "Unknown action: " + action; 
+	Log.e(Wireless.this.TAG, error);
+	callbackContext.error(this.TAG + ": " + error);
+	return false;
+    }
+
 }
-    

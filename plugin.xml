@@ -54,7 +54,8 @@
       <source-file src="src/android/WiFis.java" target-dir="src/com/p4th/wireless/WiFis" />
       <source-file src="src/android/Bluetooths.java" target-dir="src/com/p4th/wireless/Bluetooths" />
       <source-file src="src/android/Permissioner.java" target-dir="src/com/p4th/wireless/Permissioner" />
-      <source-file src="src/android/CallbackJSON.java" target-dir="src/com/p4th/wireless/CallbackJSON" />
+      <source-file src="src/android/Result.java" target-dir="src/com/p4th/wireless/Result" />
+      <source-file src="src/android/ResultCB.java" target-dir="src/com/p4th/wireless/ResultCB" />
     </platform>
 
     <!-- browser -->
