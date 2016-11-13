@@ -21,45 +21,51 @@
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
     xmlns:rim="http://www.blackberry.com/ns/widgets"
     xmlns:android="http://schemas.android.com/apk/res/android"
-    id="cordova-wifis-plugin"
+    id="cordova-wireless-plugin"
     version="1.1.2-dev">
-    <name>WiFis</name>
-    <description>P4th WiFis Plugin</description>
+    <name>Wireless</name>
+    <description>P4th Wireless Plugin</description>
     <license>Apache 2.0</license>
-    <keywords>cordova,wifi</keywords>
+    <keywords>cordova,wireless,bluetooth,wifi</keywords>
     <repo>https://github.com/positively4th/cordova-wifis-plugin.git</repo>
     <issue>https://github.com/positively4th/cordova-wifis-plugin/issues</issue>
 
-    <js-module src="www/wifis.js" name="wifis">
-        <clobbers target="wifis" />
+    <js-module src="www/wireless.js" name="wireless">
+        <clobbers target="wireless" />
     </js-module>
 
     <!-- android -->
     <platform name="android">
       <config-file target="AndroidManifest.xml" parent="/manifest">
 	<uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+        <uses-permission android:name="android.permission.BLUETOOTH"/>
+        <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
         <uses-permission android:name="android.permission.INTERNET"/>
 	<uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>
 	<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
       </config-file>
       <config-file target="res/xml/config.xml" parent="/*">
-        <feature name="WiFis" >
-          <param name="android-package" value="com.p4th.wifis.WiFis"/>
+        <feature name="Wireless" >
+          <param name="android-package" value="com.p4th.wireless.Wireless"/>
         </feature>
       </config-file>
       
-      <source-file src="src/android/WiFis.java" target-dir="src/p4th/wifis" />
+      <source-file src="src/android/Wireless.java" target-dir="src/com/p4th/wireless/Wireless" />
+      <source-file src="src/android/WiFis.java" target-dir="src/com/p4th/wireless/WiFis" />
+      <source-file src="src/android/Bluetooths.java" target-dir="src/com/p4th/wireless/Bluetooths" />
+      <source-file src="src/android/Permissioner.java" target-dir="src/com/p4th/wireless/Permissioner" />
+      <source-file src="src/android/CallbackJSON.java" target-dir="src/com/p4th/wireless/CallbackJSON" />
     </platform>
 
     <!-- browser -->
     <platform name="browser">
         <config-file target="config.xml" parent="/*">
-            <feature name="WiFis">
-                <param name="browser-package" value="WiFis" />
+            <feature name="Wireless">
+                <param name="browser-package" value="Wireless" />
             </feature>
         </config-file>
 
-        <js-module src="src/browser/wifis.js" name="WiFis">
+        <js-module src="src/browser/wireless.js" name="Wireless">
             <runs />
         </js-module>
     </platform>

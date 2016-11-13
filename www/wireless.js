@@ -34,32 +34,27 @@ var  exec = require('cordova/exec');
 // Tell cordova channel to wait on the CordovaInfoReady event
 //channel.waitForInitialization('onCordovaInfoReady');
 
-function WiFis() {
-    this.scanResult = [];
+function Wireless() {
+    this.started = false; 
 }
 
-WiFis.prototype.wifis = function() {
-    return this.scanResult;
+Wireless.prototype.start = function(onSuccess, onError, scanInterval) {
+
+
+    var _onSuccess = function (scanResult) {
+	onSuccess(scanResult);
+    }.bind(this);
+    
+    var _onError = function (err) {
+	console.log('Error: Wireless: scan: ' + err);
+	onError(err);
+    }.bind(this);
+    
+    if (!this.started) {
+	exec(_onSuccess, _onError, "Wireless", "start", [scanInterval]);
+    } else {
+	throw new Error('Wireless: Already started.');
+    }
 };
 
-WiFis.prototype.scan = function() {
-
-
-    return new Promise(function(resolve, reject) {
-	var onSuccess = function (scanResult) {
-	    this.scanResult = scanResult;
- 	    resolve(this.scanResult);
-	}.bind(this);
-	
-	var onError = function (err) {
-	    console.log('Error: Wifis: scan: ' + err);
-	    this.scanResult = [];
- 	    reject(err);
-	}.bind(this);
-	
-	//    argscheck.checkArgs('fF', 'Device.getInfo', arguments);
-	exec(onSuccess, onError, "WiFis", "scan", []);
-    });
-};
-
-module.exports = new WiFis();
+module.exports = new Wireless();

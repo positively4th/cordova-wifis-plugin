@@ -70,11 +70,11 @@ function scan(pendingTime) {
 }
 
 module.exports = {
-    scan: function (success/*, error*/) {
+    start: function (success/*, error*/) {
         setTimeout(function () {
             success(scan(delay * 1000));
         }, delay);
     }
 };
 
-require("cordova/exec/proxy").add("WiFis", module.exports);
+require("cordova/exec/proxy").add("Wireless", module.exports);
