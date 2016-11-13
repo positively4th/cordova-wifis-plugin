@@ -22,8 +22,11 @@ var browser = require('cordova/platform');
 
 
 var wifis = ['-1,-1,-1', '0,0,0', '1,1,1'];
-
-var delay = 500;
+var types = {
+    "-1,-1,-1": 'WiFis',
+    "0,0,0": "WiFis",
+    "1,1,1": "Bluetooths"
+};
 
 function getRandomWifi() {
     var index = Math.floor(Math.random() * wifis.length);
@@ -47,33 +50,70 @@ function normalizeRSSI(level) {
 function scan(pendingTime) {
     var i;
     var q;
-    var res = {
-	networks: [],
-	pendingTime: pendingTime
-    };
+    var networks = [];
 
     var p = [2 * Math.random() - 1, 2 * Math.random() - 1, 2 * Math.random() - 1];
     for (i = 0 ; i < wifis.length ; i++) {
 	if (Math.random() > 0.25) {
 	    q = wifis[i].split(',');
 	    var rssi = - 100 * getNrm(p,q) / Math.sqrt(4+4+4);
-	    res.networks.push({
+	    networks.push({
+		id: wifis[i],
+		name: 'Name of ' + wifis[i], 
+		type: types[wifis[i]],
 		SSID: wifis[i],
 		RSSI: rssi,
 		timestamp: Date.now(),
 		strength: normalizeRSSI(rssi)
 	    });
-	    res.networks.summary = p.join(',');
+	    networks.summary = p.join(',');
 	}
     }
-    return res;
+    return networks;
 }
 
+var interval = null;
+var timeout = null;
+var scanTime = 0.5;
 module.exports = {
-    start: function (success/*, error*/) {
+
+    scan: function (success, error) {
+	var delay = 500;
+	if (timeout) {
+	    error('Scan already started');
+	    return false;
+	}
         setTimeout(function () {
-            success(scan(delay * 1000));
+            success(scan(delay));
+	    timeout = null;
         }, delay);
+	return true;
+    },
+
+    start: function (success, error, delay) {
+	if (interval) {
+	    error('Already started');
+	    return false;
+	}
+        success(scan(delay), { keepCallback: true });
+        interval = setInterval(function () {
+	    console.log('start scan started');
+
+
+	    success(scan(delay), { keepCallback: true });
+        }, delay);
+	return true;
+    },
+    
+    stop: function (success, error) {
+	if (!interval) {
+	    error('Not started');
+	    return false;
+	}
+	clearInterval(interval);
+	interval =  null;
+        success();
+	return true;
     }
 };
 
