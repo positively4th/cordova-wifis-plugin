@@ -111,12 +111,9 @@ public class Wireless extends CordovaPlugin implements ResultCB {
 	
 	this.result = null;
 	this.callCbCtx(jsonData, this.startCbCtx, true);
-	//	if (this.startCbCtx != this.scanCbCtx) {
 	this.callCbCtx(jsonData, this.scanCbCtx, false);
-	//	    this.scanCbCtx = null;
-	//	}
+	this.scanCbCtx = null;
 	this.scheduleNextScan();
-	    
 	    
     }
 
