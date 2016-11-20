@@ -1,6 +1,5 @@
 package com.p4th.wireless;
 
-import com.p4th.wireless.Permissioner;
 import com.p4th.wireless.ResultCB;
 
 import java.util.TimeZone;
@@ -15,6 +14,7 @@ import org.json.JSONObject;
 
 import android.provider.Settings;
 import android.net.wifi.WifiManager;
+import android.app.Activity;
 import android.content.Context;
 import android.net.wifi.ScanResult;
 import java.util.List;
@@ -29,7 +29,7 @@ import android.os.Build.VERSION;
 import android.Manifest;
 import android.content.pm.PackageManager;
 
-public class WiFis implements Permissioner.PermissionHandler {
+public class WiFis {
 
     public class WiFiReceiver extends BroadcastReceiver {
 
@@ -46,7 +46,7 @@ public class WiFis implements Permissioner.PermissionHandler {
 		List<ScanResult> scanResults = WiFis.this.getWifiManager().getScanResults();
 		Log.i(this.TAG, "Received scan results");
 		//		Log.i(this.wifisInstance.TAG, new Integer(scanResults.size()).toString());
-		Log.i(this.TAG, scanResults.toString());
+		//		Log.i(this.TAG, scanResults.toString());
 		JSONArray res = this.normalizeAsJSON(scanResults);
 		WiFis.this.resultCB.handleResult(new Result(this.getType(), res));
 	    } catch (Exception e) {
@@ -96,17 +96,18 @@ public class WiFis implements Permissioner.PermissionHandler {
 
     protected WiFiReceiver wifiReceiver = null;
     protected Context ctx = null;
-    protected Permissioner permissioner = null;
+    protected Activity activity = null;
     protected ResultCB resultCB = null;
     protected WifiManager wifiManager = null;
 
     /**
      * Constructor.
      */
-    public WiFis(Context ctx, ResultCB resultCB) throws Exception {
+    public WiFis(Activity activity, Context ctx, ResultCB resultCB) throws Exception {
+	Log.i(this.TAG, "WiFis");
+	this.activity = activity;
 	this.ctx = ctx;
 	this.resultCB = resultCB;
-	this.permissioner = new Permissioner(this.ctx);
 
 	if (WiFis.scanIntentFilter == null) {
 	    WiFis.scanIntentFilter = new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION);
@@ -121,37 +122,21 @@ public class WiFis implements Permissioner.PermissionHandler {
     }
 
 
-    public void startScan() throws Exception {
-	Log.i(this.TAG, "startScan");
-	this.permissioner.requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, this);
-    }
-
-    public void handlePermissions(List<String> granted, List<String> denied) {
-	Log.i(this.TAG, "handelPermissions");
-	if (denied.size() > 0) {
-	    return;
-	}
-	try {
-	    this.startScanHelper();
-	} catch (Exception e) {
-	    Log.i(this.TAG, e.getMessage());
-	}
-    }
-    
-    protected void startScanHelper () throws Exception {
+    public void startScan () throws Exception {
 	Log.i(this.TAG, "statScanHelper");
 
 	WifiManager wifiManager = this.getWifiManager();
 
-	this.wifiReceiver = new WiFiReceiver();
-	this.ctx
-	    .registerReceiver(this.wifiReceiver, this.scanIntentFilter);
-	
+	if (this.wifiReceiver == null) {
+	    this.wifiReceiver = new WiFiReceiver();
+	    this.ctx
+		.registerReceiver(this.wifiReceiver, this.scanIntentFilter);
+	}
 	if (this.getWifiManager().isWifiEnabled() == false) {
 	    Log.e(this.TAG, "Enabling wifi!");
 	    this.getWifiManager().setWifiEnabled(true);
 	}   
-
+	
 	this.getWifiManager().startScan();
     }
     

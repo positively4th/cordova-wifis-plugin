@@ -1,6 +1,5 @@
 package com.p4th.wireless;
 
-import com.p4th.wireless.Permissioner;
 import com.p4th.wireless.ResultCB;
 
 
@@ -34,7 +33,7 @@ import android.os.Build.VERSION;
 import android.Manifest;
 import android.content.pm.PackageManager;
 
-public class Bluetooths implements  Permissioner.PermissionHandler {
+public class Bluetooths  {
 
     public class BTReceiver extends BroadcastReceiver {
 
@@ -65,6 +64,7 @@ public class Bluetooths implements  Permissioner.PermissionHandler {
 		if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
 		    Log.i(BTReceiver.TAG, " found " + (new Integer(this.intents.size())).toString());
 		    this.onScanFinished(intent);
+		    this.intents.clear();
 		}
 	    } catch (Exception e) {
 		Log.e(BTReceiver.TAG, e.getMessage());
@@ -73,6 +73,7 @@ public class Bluetooths implements  Permissioner.PermissionHandler {
 	
 	protected void onScanFinished(Intent intent) {
 	    JSONArray res = this.normalizeAsJSON(this.intents);
+	    this.intents.clear();
 	    Bluetooths.this.resultCB.handleResult(new Result(this.getType(), res));
        	}
 	
@@ -127,7 +128,6 @@ public class Bluetooths implements  Permissioner.PermissionHandler {
     protected BluetoothAdapter btAdapter = null;
     protected Activity activity = null;
     protected Context ctx = null;
-    protected Permissioner permissioner = null;
     protected ResultCB resultCB = null;
     protected BroadcastReceiver scanReceiver = null;
     /**
@@ -138,7 +138,6 @@ public class Bluetooths implements  Permissioner.PermissionHandler {
 	this.activity = activity;
 	this.ctx = ctx;
 	this.resultCB = resultCB;
-	this.permissioner = new Permissioner(this.ctx);
 
 	if (Bluetooths.scanIntentFilter == null) {
 	    Bluetooths.scanIntentFilter = new IntentFilter();
@@ -155,34 +154,17 @@ public class Bluetooths implements  Permissioner.PermissionHandler {
 	}
     }
 
-    public void startScan() throws Exception {
-	Log.i(this.TAG, "startScan");
-	this.permissioner.requestPermissions(new String[]{Manifest.permission.BLUETOOTH, Manifest.permission.BLUETOOTH_ADMIN}, this);
-    }
-
-    public void handlePermissions(List<String> granted, List<String> denied) {
-	Log.i(this.TAG, "handlePermissions");
-	Log.i(this.TAG, " granted: " + (new Integer(granted.size())).toString());
-	Log.i(this.TAG, " denied: " + (new Integer(denied.size())).toString());
-	if (denied.size() > 0) {
-	    return;
-	}
-	try {
-	    this.startScanHelper();
-	} catch (Exception e) {
-	    Log.i(this.TAG, e.getMessage());
-	}
-    }
-    
-    protected void startScanHelper () throws Exception {
+    public void startScan () throws Exception {
 	Log.i(this.TAG, "startScanHelper");
 	if (this.getBTAdapter().isEnabled() == false) {
 	    Log.e(this.TAG, "Enabling bluetooth!");
 	    Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
 	    this.activity.startActivityForResult(enableBtIntent, this.REQUEST_CODE);
 	}   
-	this.scanReceiver = new BTReceiver(this.getBTAdapter());
-	this.ctx.registerReceiver(this.scanReceiver, Bluetooths.scanIntentFilter); // Don't forget to unregister during onDestroy
+	if (this.scanReceiver == null) {
+	    this.scanReceiver = new BTReceiver(this.getBTAdapter());
+	    this.ctx.registerReceiver(this.scanReceiver, Bluetooths.scanIntentFilter); // Don't forget to unregister during onDestroy
+	}
 	if (!this.getBTAdapter().isDiscovering()) {
 	    this.getBTAdapter().startDiscovery();
 	}
