@@ -112,7 +112,6 @@ public class WiFis {
 	if (WiFis.scanIntentFilter == null) {
 	    WiFis.scanIntentFilter = new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION);
 	}
-	this.startScan();
     }
     
     public void onDestroy() {

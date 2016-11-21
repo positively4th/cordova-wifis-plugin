@@ -145,7 +145,6 @@ public class Bluetooths  {
 	    Bluetooths.scanIntentFilter.addAction(BluetoothDevice.ACTION_FOUND);
 	}
 	
-	this.startScan();
     }
 
     public void onDestroy() {

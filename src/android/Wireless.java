@@ -46,12 +46,8 @@ public class Wireless extends CordovaPlugin implements ResultCB {
 	    Log.i(Wireless.this.TAG, "ScanTask.run");
 	    
 	    try {
-		if (Wireless.this.wifis != null) {
-		    Wireless.this.wifis.startScan();
-		}
-		if (Wireless.this.bluetooths != null) {
-		    Wireless.this.bluetooths.startScan();
-		}
+		Wireless.this.getWiFis().startScan();
+		Wireless.this.getBluetooths().startScan();
 	    } catch (Exception e) {
 		Log.e(this.TAG, e.getMessage());
 		Log.getStackTraceString(e);
@@ -168,15 +164,29 @@ public class Wireless extends CordovaPlugin implements ResultCB {
 	}
 	this.scanTimer.schedule(new ScanTask(), this.scanDelay);
     }
-    
+
+    protected WiFis getWiFis () throws Exception {
+	if (this.wifis == null) {
+	    this.wifis = new WiFis(Wireless.this.cordova.getActivity(), Wireless.this.cordova.getActivity().getApplicationContext(), Wireless.this);
+	}
+	return this.wifis;
+    }
+
+    protected Bluetooths getBluetooths () throws Exception {
+	if (this.bluetooths == null) {
+	    this.bluetooths = new Bluetooths(Wireless.this.cordova.getActivity(), Wireless.this.cordova.getActivity().getApplicationContext(), Wireless.this);
+	}
+	return this.bluetooths;
+    }
+
     protected void doScan()  {
 	if (!this.permissions.hasPermissions(this.neededPermissions)) {
 	    this.scanCbCtx.error("Missing required permissions.");
 	    return;
 	}
 	try {
-	    Wireless.this.wifis = new WiFis(Wireless.this.cordova.getActivity(), Wireless.this.cordova.getActivity().getApplicationContext(), Wireless.this);
-	    Wireless.this.bluetooths = new Bluetooths(Wireless.this.cordova.getActivity(), Wireless.this.cordova.getActivity().getApplicationContext(), Wireless.this);
+	    this.getWiFis().startScan();
+	    this.getBluetooths().startScan();
 	}
 	catch (JSONException e) {
 	    Log.e(Wireless.this.TAG, e.getMessage());
