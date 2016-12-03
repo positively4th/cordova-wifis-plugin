@@ -46,6 +46,9 @@ public class Wireless extends CordovaPlugin implements ResultCB {
 	    Log.i(Wireless.this.TAG, "ScanTask.run");
 	    
 	    try {
+		JSONObject wrapper = new JSONObject();
+		wrapper.put("type", "startScan");
+		Wireless.this.callCbCtx(wrapper, Wireless.this.startCbCtx, true);
 		Wireless.this.getWiFis().startScan();
 		Wireless.this.getBluetooths().startScan();
 	    } catch (Exception e) {
@@ -92,44 +95,48 @@ public class Wireless extends CordovaPlugin implements ResultCB {
 	Log.i(this.TAG, res.type);
 	//	Log.i(this.TAG, res.jsonData.toString());
 
-	String type = res.type;
-	JSONArray jsonData = res.jsonData;
-	
-	if (this.result == null || this.result.type.equals(res.type)) {
-	    Log.i(this.TAG, res.type + " aready reported");
-	    this.result = res;
-	    return;
-	}
-
-	Log.i(this.TAG, res.type + " not reported");
-	jsonData = this.concatJSONArray(this.result.jsonData, res.jsonData);
-	//	Log.i(this.TAG, "reporting: " + jsonData.toString());
-	
-	this.result = null;
-	this.callCbCtx(jsonData, this.startCbCtx, true);
-	this.callCbCtx(jsonData, this.scanCbCtx, false);
-	this.scanCbCtx = null;
-	this.scheduleNextScan();
-	    
-    }
-
-    protected JSONArray concatJSONArray(JSONArray arr1, JSONArray arr2) {
 	try {
-	    JSONArray result = new JSONArray();
-	    for (int i = 0; i < arr1.length(); i++) {
-		result.put(arr1.get(i));
+	    String type = res.type;
+	    JSONArray jsonData = res.jsonData;
+	    
+	    if (this.result == null || this.result.type.equals(res.type)) {
+		Log.i(this.TAG, res.type + " aready reported");
+		this.result = res;
+		return;
 	    }
-	    for (int i = 0; i < arr2.length(); i++) {
-		result.put(arr2.get(i));
+	    
+	    Log.i(this.TAG, res.type + " not reported");
+	    jsonData = this.concatJSONArray(this.result.jsonData, res.jsonData);
+	    //	Log.i(this.TAG, "reporting: " + jsonData.toString());
+	    
+	    JSONObject wrapper = new JSONObject();
+	    wrapper.put("data", jsonData);
+	    wrapper.put("type", "result");
+	    this.result = null;
+	    if (this.scanCbCtx == null) {
+		this.callCbCtx(wrapper, this.startCbCtx, true);
+		this.scheduleNextScan();
+	    } else {
+		this.callCbCtx(wrapper, this.scanCbCtx, false);
+		this.scanCbCtx = null;
 	    }
-	    return result;
 	} catch (JSONException e) {
 	    Log.e(Wireless.this.TAG, e.getMessage());
-	    return new JSONArray();
 	}
     }
 
-    protected boolean callCbCtx(JSONArray jsonData, CallbackContext cbCtx, boolean keepCb) {
+    protected JSONArray concatJSONArray(JSONArray arr1, JSONArray arr2) throws JSONException {
+	JSONArray result = new JSONArray();
+	for (int i = 0; i < arr1.length(); i++) {
+	    result.put(arr1.get(i));
+	}
+	for (int i = 0; i < arr2.length(); i++) {
+	    result.put(arr2.get(i));
+	}
+	return result;
+    }
+
+    protected boolean callCbCtx(JSONObject jsonData, CallbackContext cbCtx, boolean keepCb) {
 	if (cbCtx == null) {
 	    return false;
 	}
@@ -206,8 +213,18 @@ public class Wireless extends CordovaPlugin implements ResultCB {
 		callbackContext.error(this.TAG + ": " + "Scan already started.");
 		return false;
 	    }
+	    try {
+		JSONObject wrapper = new JSONObject();
+		wrapper.put("type", "startScan");
+		Wireless.this.callCbCtx(wrapper, callbackContext, true);
+	    }  catch (JSONException e) {
+		Log.e(Wireless.this.TAG, e.getMessage());
+		callbackContext.error(e.getMessage());
+		return false;
+	    }
 	    this.scanCbCtx = callbackContext;
 	    this.ensurePermissions(Wireless.SCAN_REQUEST_CODE);
+
 	    return true;
 	}
 	if ("start".equals(action)) {
@@ -249,9 +266,26 @@ public class Wireless extends CordovaPlugin implements ResultCB {
 	    }
 	    this.stopTimer();
 	    this.startCbCtx = null;
-	    callbackContext.success();
+	    try {
+		JSONObject wrapper = new JSONObject();
+		wrapper.put("type", "stopScan");
+		callbackContext.success(wrapper);
+	    }  catch (JSONException e) {
+		Log.e(Wireless.this.TAG, e.getMessage());
+		callbackContext.error(e.getMessage());
+		return false;
+	    }
 	    return true;
 	}
+
+
+
+
+
+
+
+
+
 	String error = "Unknown action: " + action; 
 	Log.e(Wireless.this.TAG, error);
 	callbackContext.error(this.TAG + ": " + error);

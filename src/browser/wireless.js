@@ -69,7 +69,10 @@ function scan(pendingTime) {
 	    networks.summary = p.join(',');
 	}
     }
-    return networks;
+    return {
+	type: 'result',
+	data: networks
+    };
 }
 
 var interval = null;
@@ -83,7 +86,11 @@ module.exports = {
 	    error('Scan already started');
 	    return false;
 	}
-        setTimeout(function () {
+
+	success({
+	    type: 'scanStarted',
+	}, { keepCallback: true } );
+	setTimeout(function () {
             success(scan(delay));
 	    timeout = null;
         }, delay);
@@ -112,7 +119,9 @@ module.exports = {
 	}
 	clearInterval(interval);
 	interval =  null;
-        success();
+        success({
+	    type: 'scanStopped',
+	});
 	return true;
     }
 };
