@@ -81,7 +81,7 @@ var scanTime = 0.5;
 module.exports = {
 
     scan: function (success, error) {
-	var delay = 500;
+	var delay = 2500;
 	if (timeout) {
 	    error('Scan already started');
 	    return false;
@@ -102,11 +102,12 @@ module.exports = {
 	    error('Already started');
 	    return false;
 	}
+	success({ type: 'scanStarted' }, { keepCallback: true } );
         success(scan(delay), { keepCallback: true });
         interval = setInterval(function () {
 	    console.log('start scan started');
 
-
+	    success({ type: 'scanStarted' }, { keepCallback: true } );
 	    success(scan(delay), { keepCallback: true });
         }, delay);
 	return true;
@@ -120,7 +121,7 @@ module.exports = {
 	clearInterval(interval);
 	interval =  null;
         success({
-	    type: 'scanStopped',
+	    type: 'monitorStopped',
 	});
 	return true;
     }

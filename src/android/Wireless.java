@@ -47,7 +47,7 @@ public class Wireless extends CordovaPlugin implements ResultCB {
 	    
 	    try {
 		JSONObject wrapper = new JSONObject();
-		wrapper.put("type", "startScan");
+		wrapper.put("type", Wireless.SCAN_STARTED_TYPE);
 		Wireless.this.callCbCtx(wrapper, Wireless.this.startCbCtx, true);
 		Wireless.this.getWiFis().startScan();
 		Wireless.this.getBluetooths().startScan();
@@ -60,6 +60,9 @@ public class Wireless extends CordovaPlugin implements ResultCB {
     
     public static final String TAG = "Wireless";
     public static final int SCAN_REQUEST_CODE = 1;
+    public static final String SCAN_STARTED_TYPE = "scanStarted";
+    public static final String SCAN_RESULT_TYPE = "result";
+    public static final String MONITOR_STOP_TYPE = "monitorStopped";
     
     protected String []neededPermissions = new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.BLUETOOTH, Manifest.permission.BLUETOOTH_ADMIN};
     protected Permissions permissions = null;
@@ -111,7 +114,7 @@ public class Wireless extends CordovaPlugin implements ResultCB {
 	    
 	    JSONObject wrapper = new JSONObject();
 	    wrapper.put("data", jsonData);
-	    wrapper.put("type", "result");
+	    wrapper.put("type", Wireless.SCAN_RESULT_TYPE);
 	    this.result = null;
 	    if (this.scanCbCtx == null) {
 		this.callCbCtx(wrapper, this.startCbCtx, true);
@@ -154,7 +157,11 @@ public class Wireless extends CordovaPlugin implements ResultCB {
 	this.stopTimer();
 	if (this.scanDelay >= 0) {
 	    this.scanTimer = new Timer();
-	    this.scheduleNextScan();
+
+	    //	    this.scheduleNextScan();
+	    ScanTask task = new ScanTask();
+	    task.run();
+
 	}
     }
     
@@ -165,11 +172,13 @@ public class Wireless extends CordovaPlugin implements ResultCB {
 	}
     }
 
-    protected void scheduleNextScan () {
+    protected ScanTask scheduleNextScan () {
 	if (!this.isTimerStarted()) {
-	    return;
+	    return null;
 	}
-	this.scanTimer.schedule(new ScanTask(), this.scanDelay);
+	ScanTask task = new ScanTask();
+	this.scanTimer.schedule(task, this.scanDelay);
+	return task;
     }
 
     protected WiFis getWiFis () throws Exception {
@@ -215,7 +224,7 @@ public class Wireless extends CordovaPlugin implements ResultCB {
 	    }
 	    try {
 		JSONObject wrapper = new JSONObject();
-		wrapper.put("type", "startScan");
+		wrapper.put("type", Wireless.this.SCAN_STARTED_TYPE);
 		Wireless.this.callCbCtx(wrapper, callbackContext, true);
 	    }  catch (JSONException e) {
 		Log.e(Wireless.this.TAG, e.getMessage());
@@ -268,7 +277,7 @@ public class Wireless extends CordovaPlugin implements ResultCB {
 	    this.startCbCtx = null;
 	    try {
 		JSONObject wrapper = new JSONObject();
-		wrapper.put("type", "stopScan");
+		wrapper.put("type", Wireless.this.MONITOR_STOP_TYPE);
 		callbackContext.success(wrapper);
 	    }  catch (JSONException e) {
 		Log.e(Wireless.this.TAG, e.getMessage());
@@ -311,6 +320,6 @@ public class Wireless extends CordovaPlugin implements ResultCB {
 	}
 	
 	this.permissions.addPermissions(permissions, grantResults);
-	this.doScan();
+	//	this.doScan();
     }
 }
