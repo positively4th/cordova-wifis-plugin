@@ -26,6 +26,8 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
 import android.util.Log;
 import android.content.IntentFilter;
 import android.content.BroadcastReceiver;
@@ -49,8 +51,9 @@ public class Wireless extends CordovaPlugin implements ResultCB {
 		JSONObject wrapper = new JSONObject();
 		wrapper.put("type", Wireless.SCAN_STARTED_TYPE);
 		Wireless.this.callCbCtx(wrapper, Wireless.this.startCbCtx, true);
-		Wireless.this.getWiFis().startScan();
-		Wireless.this.getBluetooths().startScan();
+		Wireless.this.ensurePermissionsAndScan();
+		//		Wireless.this.getWiFis().startScan();
+		//		Wireless.this.getBluetooths().startScan();
 	    } catch (Exception e) {
 		Log.e(this.TAG, e.getMessage());
 		Log.getStackTraceString(e);
@@ -64,6 +67,17 @@ public class Wireless extends CordovaPlugin implements ResultCB {
     public static final String SCAN_RESULT_TYPE = "result";
     public static final String MONITOR_STOP_TYPE = "monitorStopped";
     
+    public static final Map<String , String> ERRORS = new HashMap<String , String>() {{
+	    put("?", "Unknown error");
+	    put("unknownAction", "Unknown action");
+	    put("exception", "An unexpected error occured");
+	    put("started", "Monitor is already running");
+	    put("notStarted", "Monitor is not running");
+	    put("scanStarted", "A scan is already started");
+	    put("noInterval", "Interval is missing");
+	    put("invalidInterval", "Interval is invalid");
+	}};
+
     protected String []neededPermissions = new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.BLUETOOTH, Manifest.permission.BLUETOOTH_ADMIN};
     protected Permissions permissions = null;
     protected Result result = null; 
@@ -112,9 +126,7 @@ public class Wireless extends CordovaPlugin implements ResultCB {
 	    jsonData = this.concatJSONArray(this.result.jsonData, res.jsonData);
 	    //	Log.i(this.TAG, "reporting: " + jsonData.toString());
 	    
-	    JSONObject wrapper = new JSONObject();
-	    wrapper.put("data", jsonData);
-	    wrapper.put("type", Wireless.SCAN_RESULT_TYPE);
+	    JSONObject wrapper = this.wrapSuccessData(Wireless.SCAN_RESULT_TYPE, jsonData);
 	    this.result = null;
 	    if (this.scanCbCtx == null) {
 		this.callCbCtx(wrapper, this.startCbCtx, true);
@@ -126,6 +138,41 @@ public class Wireless extends CordovaPlugin implements ResultCB {
 	} catch (JSONException e) {
 	    Log.e(Wireless.this.TAG, e.getMessage());
 	}
+    }
+
+    protected JSONObject wrapSuccessData (String type, JSONArray data) throws JSONException {
+	JSONObject wrapper = new JSONObject();
+	wrapper.put("data", data);
+	wrapper.put("type", type);
+	return wrapper;
+    }
+
+    protected JSONObject wrapSuccessData (String type) throws JSONException {
+	JSONObject wrapper = new JSONObject();
+	wrapper.put("type", type);
+	return wrapper;
+    }
+
+    protected JSONObject wrapErrorData (String error) {
+	return this.wrapErrorData(error, "");
+    }
+    
+    protected JSONObject wrapErrorData (String error, String info) {
+	JSONObject wrapper = new JSONObject();
+
+	if (!this.ERRORS.containsKey(error)) {
+	    error = "?";
+	}
+	try {
+	    wrapper.put("type", error);
+	    wrapper.put("description", this.ERRORS.get(error));
+	    if (!info.equals("")) {
+		wrapper.put("info", info);
+	    }
+	} catch (JSONException e) {
+	    Log.e(this.TAG, e.getMessage());
+	}
+	return wrapper;
     }
 
     protected JSONArray concatJSONArray(JSONArray arr1, JSONArray arr2) throws JSONException {
@@ -157,8 +204,6 @@ public class Wireless extends CordovaPlugin implements ResultCB {
 	this.stopTimer();
 	if (this.scanDelay >= 0) {
 	    this.scanTimer = new Timer();
-
-	    //	    this.scheduleNextScan();
 	    ScanTask task = new ScanTask();
 	    task.run();
 
@@ -187,17 +232,17 @@ public class Wireless extends CordovaPlugin implements ResultCB {
 	}
 	return this.wifis;
     }
-
+    
     protected Bluetooths getBluetooths () throws Exception {
 	if (this.bluetooths == null) {
 	    this.bluetooths = new Bluetooths(Wireless.this.cordova.getActivity(), Wireless.this.cordova.getActivity().getApplicationContext(), Wireless.this);
 	}
 	return this.bluetooths;
     }
-
+    
     protected void doScan()  {
 	if (!this.permissions.hasPermissions(this.neededPermissions)) {
-	    this.scanCbCtx.error("Missing required permissions.");
+	    Log.e(Wireless.this.TAG, "Needed permissions not granted.");
 	    return;
 	}
 	try {
@@ -206,105 +251,95 @@ public class Wireless extends CordovaPlugin implements ResultCB {
 	}
 	catch (JSONException e) {
 	    Log.e(Wireless.this.TAG, e.getMessage());
-	    this.scanCbCtx.error(e.getMessage());
+	    this.scanCbCtx.error(this.wrapErrorData("exception",  e.getMessage()));
 	}
 	catch (Exception e) {
 	    Log.e(Wireless.this.TAG, e.getMessage());
 	    Log.getStackTraceString(e);
-	    this.scanCbCtx.error(e.getMessage());
+	    this.scanCbCtx.error(this.wrapErrorData("exception", e.getMessage()));
 	}
     }
 
     public boolean execute(String action, JSONArray args, final CallbackContext callbackContext)  {
+
 	if ("scan".equals(action)) {
 	    Log.i(this.TAG, "scan");
-	    if (this.scanCbCtx != null) {
-		callbackContext.error(this.TAG + ": " + "Scan already started.");
-		return false;
-	    }
 	    try {
-		JSONObject wrapper = new JSONObject();
-		wrapper.put("type", Wireless.this.SCAN_STARTED_TYPE);
-		Wireless.this.callCbCtx(wrapper, callbackContext, true);
-	    }  catch (JSONException e) {
-		Log.e(Wireless.this.TAG, e.getMessage());
-		callbackContext.error(e.getMessage());
-		return false;
-	    }
-	    this.scanCbCtx = callbackContext;
-	    this.ensurePermissions(Wireless.SCAN_REQUEST_CODE);
-
-	    return true;
-	}
-	if ("start".equals(action)) {
-	    Log.i(this.TAG, "start");
-	    if (this.isTimerStarted()) {
-		callbackContext.error(this.TAG + ": " + "Already started.");
-		return false;
-	    }
-	    this.startCbCtx = callbackContext;
-	    try {
-		
-		if (args.length() < 0) {
-		    Log.e(this.TAG, "Interval missing.");
-		    callbackContext.error(this.TAG + ": " + "Interval missing.");
+		if (this.scanCbCtx != null) {
+		    callbackContext.error(this.wrapErrorData("scanStarted"));
 		    return false;
 		}
 		
+		Wireless.this.callCbCtx(this.wrapSuccessData(Wireless.this.SCAN_STARTED_TYPE), callbackContext, true);
+		this.scanCbCtx = callbackContext;
+		this.ensurePermissionsAndScan();
+	    }  catch (JSONException e) {
+		Log.e(Wireless.this.TAG, e.getMessage());
+		callbackContext.error(this.wrapErrorData("exception", e.getMessage()));
+		return false;
+	    }
+	    return true;
+	}
+	
+	if ("start".equals(action)) {
+	    Log.i(this.TAG, "start");
+	    try {
+		
+		if (this.isTimerStarted()) {
+		    callbackContext.error(this.wrapErrorData("started"));
+		    return false;
+		}
+		
+		if (args.length() < 0) {
+		    Log.e(this.TAG, "Interval missing.");
+		    callbackContext.error(this.wrapErrorData("noInterval"));
+		    return false;
+		}
+		
+		this.startCbCtx = callbackContext;
 		this.scanDelay = args.getLong(0);
 		if (this.scanDelay <= 0) {
 		    Log.e(this.TAG, "Interval invalid.");
-		    callbackContext.error(this.TAG + ": " + "Interval invalid.");
+		    callbackContext.error(this.wrapErrorData("invalidInterval"));
 		    return false;
 		}
 		this.initTimer();
 	    }
 	    catch (JSONException e) {
 		Log.e(Wireless.this.TAG, e.getMessage());
-		callbackContext.error(e.getMessage());
+		callbackContext.error(this.wrapErrorData("exception", e.getMessage()));
 		return false;
 	    }
-	    this.ensurePermissions(Wireless.SCAN_REQUEST_CODE);
 	    return true;
 	}
+	
 	if ("stop".equals(action)) {
 	    Log.i(this.TAG, "stop");
-	    if (!this.isTimerStarted()) {
-		callbackContext.error(this.TAG + ": " + "Not started.");
-		return false;
-	    }
-	    this.stopTimer();
-	    this.startCbCtx = null;
 	    try {
-		JSONObject wrapper = new JSONObject();
-		wrapper.put("type", Wireless.this.MONITOR_STOP_TYPE);
-		callbackContext.success(wrapper);
+		if (!this.isTimerStarted()) {
+		    callbackContext.error(this.wrapErrorData("notStarted"));
+		    return false;
+		}
+		this.stopTimer();
+		this.startCbCtx = null;
+		callbackContext.success(this.wrapSuccessData(Wireless.this.MONITOR_STOP_TYPE));
 	    }  catch (JSONException e) {
-		Log.e(Wireless.this.TAG, e.getMessage());
-		callbackContext.error(e.getMessage());
+		callbackContext.error(this.wrapErrorData("exception", e.getMessage()));
 		return false;
 	    }
 	    return true;
 	}
-
-
-
-
-
-
-
-
-
-	String error = "Unknown action: " + action; 
-	Log.e(Wireless.this.TAG, error);
-	callbackContext.error(this.TAG + ": " + error);
+	
+	
+	Log.e(Wireless.this.TAG, this.ERRORS.get("unknownAction"));
+	callbackContext.error(this.wrapErrorData("exception", action));
 	return false;
     }
 
 
-    public void ensurePermissions (int requestCode) {
-	Log.i(this.TAG, "requestCode");
-	this.cordova.requestPermissions(this, requestCode, this.neededPermissions);
+    public void ensurePermissionsAndScan () {
+	Log.i(this.TAG, "ensurePermissionsAndScan");
+	this.cordova.requestPermissions(this, Wireless.SCAN_REQUEST_CODE, this.neededPermissions);
 	
     }
 
@@ -320,6 +355,6 @@ public class Wireless extends CordovaPlugin implements ResultCB {
 	}
 	
 	this.permissions.addPermissions(permissions, grantResults);
-	//	this.doScan();
+	this.doScan();
     }
 }
